@@ -6,6 +6,8 @@ import time
 import functools
 from typing import List, Tuple, Optional, Any
 
+os.environ.setdefault("GRADIO_ANALYTICS_ENABLED", "False")
+
 import httpx
 import gradio as gr
 from PIL import Image, ImageOps
@@ -175,21 +177,70 @@ def _write_preview(name: str, b: bytes) -> str:
 
 
 def _pick_color(name: str, default=(255, 255, 255)):
-    name = (name or "").lower()
-    if name == "black":
+    if isinstance(name, (tuple, list)) and len(name) == 3:
+        try:
+            return (int(name[0]), int(name[1]), int(name[2]))
+        except Exception:
+            return default
+
+    s = (name or "").strip().lower()
+    if s in ("black",):
         return (0, 0, 0)
-    if name == "gray":
+    if s in ("gray", "grey"):
         return (240, 240, 240)
+    if s in ("white",):
+        return (255, 255, 255)
+    if s.startswith("#"):
+        hexv = s[1:]
+        if len(hexv) == 3:
+            hexv = "".join([c * 2 for c in hexv])
+        if len(hexv) == 6:
+            try:
+                return (int(hexv[0:2], 16), int(hexv[2:4], 16), int(hexv[4:6], 16))
+            except Exception:
+                return default
+    if s.startswith("rgb(") and s.endswith(")"):
+        try:
+            parts = [p.strip() for p in s[4:-1].split(",")]
+            if len(parts) >= 3:
+                return (int(float(parts[0])), int(float(parts[1])), int(float(parts[2])))
+        except Exception:
+            return default
     return default
 
 
+def _apply_background(img: Image.Image, bg_color) -> Image.Image:
+    bg = Image.new("RGB", img.size, bg_color)
+    if img.mode in ("RGBA", "LA") or ("transparency" in img.info):
+        rgba = img.convert("RGBA")
+        bg.paste(rgba, mask=rgba.split()[-1])
+    else:
+        bg.paste(img.convert("RGB"))
+    return bg
+
+
+def _pad_to_target(img: Image.Image, w: int, h: int, pad_color) -> Image.Image:
+    if img.size == (w, h):
+        return img
+    canvas = Image.new("RGBA", (w, h), pad_color + (255,))
+    x = (w - img.size[0]) // 2
+    y = (h - img.size[1]) // 2
+    if img.mode in ("RGBA", "LA") or ("transparency" in img.info):
+        rgba = img.convert("RGBA")
+        canvas.paste(rgba, (x, y), rgba.split()[-1])
+    else:
+        canvas.paste(img.convert("RGB"), (x, y))
+    return canvas
+
+
 # ---------- Remove BG ----------
-def batch_remove_bg(input_files: Any, out_format: str, quality: int, jpg_bg: str):
+def batch_remove_bg(input_files: Any, out_format: str, quality: int, jpg_bg: str, fill_bg: bool, fill_color: str):
     input_paths = _normalize_files(input_files)
     if not input_paths:
         return [], None, "No input files."
 
-    bg_color = _pick_color(jpg_bg, (255, 255, 255))
+    jpg_color = _pick_color(jpg_bg, (255, 255, 255))
+    fill_color = _pick_color(fill_color, jpg_color)
     outputs_gallery = []
     outputs_zip_items = []
     logs = []
@@ -206,7 +257,14 @@ def batch_remove_bg(input_files: Any, out_format: str, quality: int, jpg_bg: str
                 continue
             cut = rembg_remove(raw, session=session) if session else rembg_remove(raw)
             pil = _to_pil(cut).convert("RGBA")
-            out_bytes = _save_image_bytes(pil, out_format, quality=int(quality), bg_color=bg_color)
+            if fill_bg:
+                pil = _apply_background(pil, fill_color)
+            out_bytes = _save_image_bytes(
+                pil,
+                out_format,
+                quality=int(quality),
+                bg_color=fill_color if fill_bg else jpg_color,
+            )
         except Exception as e:
             logs.append(f"[{base}] remove-bg/export failed: {e}")
             continue
@@ -476,12 +534,21 @@ def inpaint_single_ui(file_list: Any, editor_value: Any, out_format: str, qualit
     return out_path, [out_path], zip_path, "OK"
 
 # ---------- Resize ----------
-def _resize_one(img: Image.Image, w: int, h: int, mode: str, pad_color=(255, 255, 255)) -> Image.Image:
+def _resize_one(
+    img: Image.Image,
+    w: int,
+    h: int,
+    mode: str,
+    pad_color=(255, 255, 255),
+    force_exact: bool = False,
+) -> Image.Image:
     img = img.convert("RGBA")
 
     if mode == "Fit":
         im = img.copy()
         im.thumbnail((w, h), Image.LANCZOS)
+        if force_exact:
+            return _pad_to_target(im, w, h, pad_color)
         return im
 
     if mode == "Crop":
@@ -498,7 +565,16 @@ def _resize_one(img: Image.Image, w: int, h: int, mode: str, pad_color=(255, 255
     return img
 
 
-def batch_resize(input_files: Any, target_w: int, target_h: int, mode: str, out_format: str, quality: int, pad_color: str):
+def batch_resize(
+    input_files: Any,
+    target_w: int,
+    target_h: int,
+    mode: str,
+    out_format: str,
+    quality: int,
+    pad_color: str,
+    force_exact: bool,
+):
     input_paths = _normalize_files(input_files)
     if not input_paths:
         return [], None, "No input files."
@@ -512,7 +588,14 @@ def batch_resize(input_files: Any, target_w: int, target_h: int, mode: str, out_
         base = os.path.splitext(os.path.basename(p))[0]
         try:
             img = Image.open(p)
-            out_img = _resize_one(img, int(target_w), int(target_h), mode, pad_color=c)
+            out_img = _resize_one(
+                img,
+                int(target_w),
+                int(target_h),
+                mode,
+                pad_color=c,
+                force_exact=force_exact,
+            )
             out_bytes = _save_image_bytes(out_img, out_format, quality=int(quality), bg_color=c)
         except Exception as e:
             logs.append(f"[{base}] resize/export failed: {e}")
@@ -555,7 +638,10 @@ with gr.Blocks(
         files_bg = gr.Files(label="拖拽上传多张图片", file_types=["image"])
         out_fmt_bg = gr.Dropdown(["PNG", "WEBP", "JPG"], value="PNG", label="输出格式")
         quality_bg = gr.Slider(50, 100, value=92, step=1, label="质量（JPG/WEBP 有效）")
-        jpg_bg = gr.Dropdown(["white", "gray", "black"], value="white", label="JPG 背景色（PNG透明不受影响）")
+        jpg_bg = gr.Dropdown(["white", "gray", "black"], value="white", label="JPG 背景色（JPG 输出用）")
+        with gr.Row():
+            fill_bg = gr.Checkbox(label="填充背景色（输出不透明）", value=False)
+            fill_color = gr.ColorPicker(label="填充颜色", value="#FFFFFF")
 
         btn_bg = gr.Button("开始批量扣白底")
         gallery_bg = gr.Gallery(label="结果预览", columns=4, height=360)
@@ -563,7 +649,7 @@ with gr.Blocks(
         log_bg = gr.Textbox(label="日志", lines=6, value="等待点击", interactive=False)
 
         btn_bg.click(fn=batch_remove_bg,
-                     inputs=[files_bg, out_fmt_bg, quality_bg, jpg_bg],
+                     inputs=[files_bg, out_fmt_bg, quality_bg, jpg_bg, fill_bg, fill_color],
                      outputs=[gallery_bg, zip_bg, log_bg],
                      concurrency_limit=MAX_CONCURRENCY)
 
@@ -642,6 +728,7 @@ with gr.Blocks(
             h = gr.Number(value=1200, label="目标高度(px)", precision=0)
         mode = gr.Radio(["Fit", "Crop", "Pad"], value="Fit", label="模式：Fit(不裁切)/Crop(裁切)/Pad(补边)")
         pad_color = gr.Dropdown(["white", "gray", "black"], value="white", label="Pad 补边颜色（Pad模式）")
+        force_exact = gr.Checkbox(value=True, label="输出固定尺寸（自动补边）")
         out_fmt_rs = gr.Dropdown(["PNG", "WEBP", "JPG"], value="PNG", label="输出格式")
         quality_rs = gr.Slider(50, 100, value=92, step=1, label="质量（JPG/WEBP 有效）")
 
@@ -651,7 +738,7 @@ with gr.Blocks(
         log_rs = gr.Textbox(label="日志", lines=6, value="等待点击", interactive=False)
 
         btn_rs.click(fn=batch_resize,
-                     inputs=[files_rs, w, h, mode, out_fmt_rs, quality_rs, pad_color],
+                     inputs=[files_rs, w, h, mode, out_fmt_rs, quality_rs, pad_color, force_exact],
                      outputs=[gallery_rs, zip_rs, log_rs],
                      concurrency_limit=MAX_CONCURRENCY)
 
@@ -661,5 +748,4 @@ demo.launch(
     server_port=7860,
     show_error=True,
     debug=True,
-    analytics_enabled=False,
 )
