@@ -54,6 +54,45 @@ $env:LAMA_SERVER = "http://127.0.0.1:8090"
 python app.py
 ```
 
+## Packaging to EXE / 打包成 EXE
+This project depends on two virtual environments and large ML models, so a true
+single-file EXE would be very large. The recommended approach is to build a
+launcher EXE that starts lama-cleaner and the Gradio UI.
+
+本项目依赖两个虚拟环境和较大的模型，真正的单文件 EXE 体积会很大。
+推荐打包一个“启动器 EXE”，用于启动 lama-cleaner 与 Gradio UI。
+
+Install PyInstaller (once) / 安装 PyInstaller（一次性）:
+```powershell
+.\.venv-ui\Scripts\python.exe -m pip install pyinstaller
+```
+
+Build the launcher / 构建启动器:
+```powershell
+cd D:\image-service
+.\tools\build_exe.ps1
+```
+
+Run the launcher / 运行启动器:
+```
+dist\image-service.exe
+```
+
+Notes / 说明:
+- If the EXE stays in `dist\`, it will automatically use the project root (`dist\..`) to find `.venv-ui` and `.venv-lama`.
+- If you move the EXE elsewhere, set `IMAGE_SERVICE_ROOT` to the project root.
+
+注意:
+- 如果 EXE 在 `dist\` 目录，会自动向上查找项目根目录中的 `.venv-ui` 与 `.venv-lama`。
+- 如果 EXE 被移动到其他位置，请设置 `IMAGE_SERVICE_ROOT` 指向项目根目录。
+
+Options / 可选参数:
+```
+dist\image-service.exe --no-browser
+dist\image-service.exe --lama-device cpu
+dist\image-service.exe --lama-port 8090 --ui-port 7860
+```
+
 ## Usage Notes / 使用说明
 - Remove Background tab uses rembg and needs the U2NET model. / 扣白底使用 rembg，需要 U2NET 模型。
 - Remove Logo tab requires a mask drawn in the ImageEditor (white = remove). / 去 Logo 需要在编辑器里涂抹蒙版（白色为擦除）。
