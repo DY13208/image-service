@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+.venv/
+venv/
+.venv-lama/
+venv-lama/
+.venv-ui/
+venv-ui/
+
+# Node
+node_modules/
+
+# OS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+
+# Large models / cache
+*.onnx
+*.pth
+models/
