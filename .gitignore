@@ -28,3 +28,8 @@ models/
 dist/
 build/
 *.spec
+test.py
+test2.py
+test.png
+reademe
+out.png
