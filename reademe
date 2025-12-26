@@ -1,6 +1,0 @@
-cd D:\image-service
-powershell -ExecutionPolicy Bypass -File .\start-all.ps1
-
-
-cd D:\image-service
-powershell -ExecutionPolicy Bypass -File .\stop-all.ps1
