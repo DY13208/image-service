@@ -1,16 +1,17 @@
 # Image Service / 图片服务
 
 Batch image tools with a Gradio UI. Provides remove background, remove logo/inpaint,
-resize, and a pipeline that combines steps. The UI runs on port 7860 and the
+resize, compress, and a pipeline that combines steps. The UI runs on port 7860 and the
 lama-cleaner server runs on port 8090.
 
-基于 Gradio 的批量图片工具。包含扣白底、去 Logo/去杂物（inpaint）、改尺寸，以及
+基于 Gradio 的批量图片工具。包含扣白底、去 Logo/去杂物（inpaint）、改尺寸、压缩，以及
 可组合的流水线处理。UI 端口 7860，lama-cleaner 端口 8090。
 
 ## Features / 功能
 - Batch remove background using rembg (U2NET model) / 使用 rembg 批量扣白底（U2NET 模型）
 - Batch remove logo or objects via lama-cleaner inpaint / 使用 lama-cleaner 批量去 Logo/去杂物
 - Batch resize (fit/crop/pad) with Pillow / 使用 Pillow 批量改尺寸（Fit/Crop/Pad）
+- Batch compress with JPG/WEBP/PNG output / 使用 JPG/WEBP/PNG 批量压缩
 - Pipeline: remove background -> inpaint -> resize / 流水线：扣白底 -> 去 Logo -> 改尺寸
 - ZIP output for batch results / 批量结果打包 ZIP 下载
 
@@ -95,6 +96,7 @@ dist\image-service.exe --lama-port 8090 --ui-port 7860
 
 ## Usage Notes / 使用说明
 - Remove Background tab uses rembg and needs the U2NET model. / 扣白底使用 rembg，需要 U2NET 模型。
+- You can choose a rembg model; downloads go to `models/` by default. / 扣白底可选择模型，模型默认下载到 `models/`。
 - Remove Logo tab requires a mask drawn in the ImageEditor (white = remove). / 去 Logo 需要在编辑器里涂抹蒙版（白色为擦除）。
 - Pipeline tab lets you combine steps. If you do not want a step, turn it off. / 流水线可组合步骤，不需要的步骤可以关闭。
 

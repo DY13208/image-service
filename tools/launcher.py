@@ -28,6 +28,7 @@ def _resolve_root() -> Path:
 
 ROOT = _resolve_root()
 LAMA_PY = ROOT / ".venv-lama" / "Scripts" / "python.exe"
+LAMA_EXE = ROOT / ".venv-lama" / "Scripts" / "lama-cleaner.exe"
 UI_PY = ROOT / ".venv-ui" / "Scripts" / "python.exe"
 APP_PY = ROOT / "app.py"
 
@@ -84,8 +85,8 @@ def main() -> int:
     parser.add_argument("--skip-ui", action="store_true")
     args = parser.parse_args()
 
-    if not LAMA_PY.exists() and not args.skip_lama:
-        print(f"Missing {LAMA_PY}")
+    if not args.skip_lama and not (LAMA_EXE.exists() or LAMA_PY.exists()):
+        print(f"Missing {LAMA_EXE} (or {LAMA_PY})")
         return 1
     if not UI_PY.exists() and not args.skip_ui:
         print(f"Missing {UI_PY}")
@@ -103,19 +104,32 @@ def main() -> int:
             print(f"Port {args.lama_port} already in use, skip lama-cleaner")
         else:
             device = _pick_device(LAMA_PY, args.lama_device)
-            cmd = [
-                str(LAMA_PY),
-                "-m",
-                "lama_cleaner",
-                "--host",
-                lama_host,
-                "--port",
-                str(args.lama_port),
-                "--device",
-                device,
-                "--model",
-                args.lama_model,
-            ]
+            if LAMA_EXE.exists():
+                cmd = [
+                    str(LAMA_EXE),
+                    "--host",
+                    lama_host,
+                    "--port",
+                    str(args.lama_port),
+                    "--device",
+                    device,
+                    "--model",
+                    args.lama_model,
+                ]
+            else:
+                cmd = [
+                    str(LAMA_PY),
+                    "-m",
+                    "lama_cleaner.cli",
+                    "--host",
+                    lama_host,
+                    "--port",
+                    str(args.lama_port),
+                    "--device",
+                    device,
+                    "--model",
+                    args.lama_model,
+                ]
             print(f"Starting lama-cleaner on {lama_host}:{args.lama_port} (device={device})")
             procs.append(subprocess.Popen(cmd, cwd=str(ROOT)))
 
