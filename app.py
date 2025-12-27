@@ -19,6 +19,8 @@ MAX_CONCURRENCY = 2
 LAMA_SERVER = os.getenv("LAMA_SERVER", "http://127.0.0.1:8090")
 LAMA_CONNECT_TIMEOUT = float(os.getenv("LAMA_CONNECT_TIMEOUT", "5"))
 LAMA_TIMEOUT = float(os.getenv("LAMA_TIMEOUT", "120"))
+GRADIO_SERVER_NAME = os.getenv("GRADIO_SERVER_NAME", "0.0.0.0")
+GRADIO_SERVER_PORT = int(os.getenv("GRADIO_SERVER_PORT", "7860"))
 EDITOR_HEIGHT = 520
 REMBG_MODEL_PATH = os.getenv("REMBG_MODEL_PATH", "").strip()
 MODELS_DIR = os.path.abspath("./models")
@@ -953,8 +955,8 @@ with gr.Blocks(
 
 #  建议先不要 queue，等按钮确认都正常后再开 queue（避免 WS 被拦误判）
 demo.launch(
-    server_name="127.0.0.1",
-    server_port=7860,
+    server_name=GRADIO_SERVER_NAME,
+    server_port=GRADIO_SERVER_PORT,
     show_error=True,
     debug=True,
 )

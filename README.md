@@ -15,6 +15,19 @@ lama-cleaner server runs on port 8090.
 - Pipeline: remove background -> inpaint -> resize / 流水线：扣白底 -> 去 Logo -> 改尺寸
 - ZIP output for batch results / 批量结果打包 ZIP 下载
 
+## Screenshots / 界面截图
+### Batch Remove Background
+![Batch Remove Background](assets/Batch%20Remove%20Background.png)
+
+### Batch Remove Logo
+![Batch Remove Logo](assets/Batch%20Remove%20Logo.png)
+
+### Batch Resize
+![Batch Resize](assets/Batch%20Resize.png)
+
+### Batch Compress
+![Batch Compress](assets/Batch%20Compress.png)
+
 ## Requirements / 环境要求
 - Windows PowerShell (scripts are .ps1) / Windows PowerShell（脚本为 .ps1）
 - Two Python virtual environments / 两个 Python 虚拟环境:
