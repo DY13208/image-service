@@ -58,4 +58,19 @@ UI_CSS = """
 #zoom-panel .gradio-container {
   max-width: 100%;
 }
+#zoom-panel .mask-editor .image-container {
+  justify-content: flex-start;
+  align-items: center;
+}
+#zoom-panel .mask-editor .wrap {
+  overflow: auto;
+  justify-content: flex-start;
+  align-items: flex-start;
+}
+#zoom-panel .mask-editor .stage-wrap {
+  margin: var(--size-8) auto var(--size-1);
+}
+#zoom-panel .mask-editor .canvas {
+  display: none;
+}
 """
